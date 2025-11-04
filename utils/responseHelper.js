@@ -1,18 +1,18 @@
-// utils/responseUtils.js
+// utils/responseHelper.js
 
-const successResponse = (res, message, data = {}, status = 200) => {
-  return res.status(status).json({
-    status: "success",
+const successResponse = (res, message, data = {}, statusCode = 200) => {
+  return res.status(statusCode).json({
+    success: true,
     message,
     data,
   });
 };
 
-const errorResponse = (res, message, status = 400, errors = null) => {
-  return res.status(status).json({
-    status: "error",
+const errorResponse = (res, message, statusCode = 400, error = null) => {
+  return res.status(statusCode).json({
+    success: false,
     message,
-    errors,
+    error,
   });
 };
 
@@ -20,3 +20,4 @@ module.exports = {
   successResponse,
   errorResponse,
 };
+
