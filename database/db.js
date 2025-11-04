@@ -27,6 +27,4 @@ pool.on('error', (err, client) => {
 // file to know how to use the pool (e.g., `pool.query(...)`).
 // A cleaner pattern is to export a simple query function.
 // This abstracts away the pool implementation.
-module.exports = {
-  query: (text, params) => pool.query(text, params),
-};
+export const dbQuery = (text, params) => pool.query(text, params);
