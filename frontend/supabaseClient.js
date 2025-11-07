@@ -4,7 +4,7 @@ const SUPABASE_ANON_KEY =
 
 // Initialize Supabase client with auto refresh token setting// Initialize Supabase client
 
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+export const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
     autoRefreshToken: true,
     persistSession: true,

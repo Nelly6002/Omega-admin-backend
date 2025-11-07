@@ -15,6 +15,7 @@ export const verifyToken = async (req, res, next) => {
       const userResp = await fetch(`${process.env.SUPABASE_URL}/auth/v1/user`, {
         headers: { Authorization: `Bearer ${token}` }
       });
+console.log(userResp);
 
       if (userResp.ok) {
         const supaUser = await userResp.json();
@@ -39,12 +40,12 @@ export const verifyToken = async (req, res, next) => {
   }
 
   // Fallback to local JWT verification
-  try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = decoded;
-    next();
-  } catch (err) {
-    console.error('Local JWT verification failed:', err.message || err);
-    res.status(401).json({ message: "Invalid token" });
-  }
+//   try {
+//     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+//     req.user = decoded;
+//     next();
+//   } catch (err) {
+//     console.error('Local JWT verification failed:', err.message || err);
+//     res.status(401).json({ message: "Invalid token" });
+//   }
 };
