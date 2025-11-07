@@ -1,127 +1,77 @@
-<!DOCTYPE html><!DOCTYPE html>
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dashboard - Omega</title>
+    <link rel="stylesheet" href="style.css" />
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <script src="supabaseClient.js"></script>
+  </head>
 
-<html lang="en"><html lang="en">
-
-<head><head>
-
-    <meta charset="UTF-8">    <meta charset="UTF-8">
-
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <title>Dashboard - Omega</title>    <title>Dashboard - Omega</title>
-
-    <link rel="stylesheet" href="style.css">    <link rel="stylesheet" href="style.css">
-
-    <script src="https://unpkg.com/@supabase/supabase-js@2"></script></head>
-
-    <script src="supabaseClient.js"></script><body>
-
-</head>    <nav class="navbar">
-
-<body>        <h2 id="welcome-text">Dashboard</h2>
-
-    <!-- Navigation -->        <button onclick="logout()" class="btn-logout">Logout</button>
-
-    <nav class="navbar">    </nav>
-
-        <div class="nav-content">
-
-            <a href="dashboard.html" class="logo">Omega</a>    <div class="container">
-
-            <div class="nav-links">        <!-- Admin Section -->
-
-                <button onclick="logout()" class="logout-btn">Logout</button>        <div id="admin-section" style="display: none;">
-
-            </div>            <div class="dashboard-section">
-
-        </div>                <h3>User Management</h3>
-
-    </nav>                <button onclick="fetchUsers()" class="btn">Refresh Users</button>
-
-                <div id="user-list" class="list-container"></div>
+  <body>
+    <nav class="navbar">
+      <div class="nav-content">
+        <a href="dashboard.html" class="logo">Omega</a>
+        <button onclick="logout()" class="logout-btn">Logout</button>
+      </div>
+    </nav>
 
     <div class="container">
+      <h2 id="welcome-text">Dashboard</h2>
 
-        <h2 id="welcome-text">Welcome!</h2>                <!-- Small create-user form for admins -->
-
-                <div id="user-form" style="margin-top: 12px; display: none;">
-
-        <!-- Admin Section -->                    <h4>Create User</h4>
-
-        <div id="admin-section">                    <form onsubmit="return handleUserSubmit(event)">
-
-            <h3>User Management</h3>                        <input type="text" id="user-name" placeholder="Full name" required>
-
-            <div id="user-list" class="dashboard"></div>                        <input type="email" id="user-email" placeholder="Email" required>
-
-                        <input type="password" id="user-password" placeholder="Password" required>
-
-            <h3>Business Management</h3>                        <select id="user-role">
-
-            <div id="business-list" class="dashboard"></div>                            <option value="user">User</option>
-
-        </div>                            <option value="admin">Admin</option>
-
-                        </select>
-
-        <!-- User Section -->                        <div style="margin-top:8px;">
-
-        <div id="user-section">                            <button type="submit" class="btn">Create</button>
-
-            <button onclick="showAddBusinessForm()" class="add-button">Add Business</button>                            <button type="button" onclick="hideAddUserForm()" class="btn">Cancel</button>
-
-            <div id="business-list" class="dashboard"></div>                        </div>
-
-        </div>                    </form>
-
-                </div>
-
-        <!-- Add Business Form -->                <button onclick="showAddUserForm()" class="btn" style="margin-top:8px;">Add User</button>
-
-        <div id="overlay" class="overlay"></div>            </div>
-
-        <div id="add-business-form" class="form-popup">
-
-            <button onclick="hideAddBusinessForm()" class="close-button">&times;</button>            <div class="dashboard-section">
-
-            <h3>Add New Business</h3>                <h3>Business Management</h3>
-
-            <form onsubmit="return addBusiness(event)">                <div id="business-list" class="list-container"></div>
-
-                <div class="input-group">            </div>
-
-                    <input type="text" id="business-name" placeholder="Business Name" required>        </div>
-
-                </div>
-
-                <div class="input-group">        <!-- User Section -->
-
-                    <textarea id="business-description" placeholder="Business Description" required></textarea>        <div id="user-section" style="display: none;">
-
-                </div>            <div class="dashboard-section">
-
-                <p id="form-msg" class="message"></p>                <h3>My Business</h3>
-
-                <button type="submit" class="btn">Submit</button>                <button onclick="showAddBusinessForm()" class="btn">Add New Business</button>
-
-            </form>                <div id="add-business-form" style="display: none;">
-
-        </div>                    <form onsubmit="return addBusiness(event)">
-
-    </div>                        <input type="text" id="business-name" placeholder="Business Name" required>
-
-                        <textarea id="business-description" placeholder="Description" required></textarea>
-
-    <script src="script.js"></script>                        <button type="submit" class="btn">Submit</button>
-
-</body>                        <button type="button" onclick="hideAddBusinessForm()" class="btn">Cancel</button>
-
-</html>                    </form>
-                </div>
-                <div id="my-businesses" class="list-container"></div>
-            </div>
+      <div id="admin-section" style="display: none">
+        <div class="dashboard-section">
+          <h3>User Management</h3>
+          <button onclick="fetchUsers()" class="btn">Refresh Users</button>
+          <div id="user-list" class="list-container"></div>
         </div>
+      </div>
+
+      <div id="user-section" style="display: none">
+        <div class="dashboard-section">
+          <h3>Business Management</h3>
+          <button onclick="showAddBusinessForm()" class="btn">
+            Add New Business
+          </button>
+          <div id="business-list" class="list-container"></div>
+        </div>
+      </div>
     </div>
-    <script src="dashboard.js"></script>
-</body>
+
+    <div id="overlay" class="overlay"></div>
+
+    <div id="add-business-form" class="form-popup">
+      <button onclick="hideAddBusinessForm()" class="close-button">
+        &times;
+      </button>
+      <h3>Add New Business</h3>
+      <form onsubmit="return addBusiness(event)">
+        <div class="input-group">
+          <input
+            type="text"
+            id="business-name"
+            placeholder="Business Name"
+            required
+          />
+        </div>
+        <div class="input-group">
+          <textarea
+            id="business-description"
+            placeholder="Business Description"
+            required
+          ></textarea>
+        </div>
+        <p id="form-msg" class="message"></p>
+        <div class="form-actions">
+          <button type="submit" class="btn">Submit</button>
+          <button type="button" onclick="hideAddBusinessForm()" class="btn">
+            Cancel
+          </button>
+        </div>
+      </form>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
 </html>
