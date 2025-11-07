@@ -2,7 +2,6 @@
 // CONFIGURATION
 // ========================
 const API_URL = "http://localhost:5000/api";
-
 // ========================
 // AUTH HELPERS
 // ========================
@@ -36,6 +35,8 @@ async function register(event) {
   const password = document.getElementById("password").value.trim();
   const msg = document.getElementById("msg");
 
+  console.log(name, email, password);
+
   if (password.length < 6) {
     msg.className = "message error";
     msg.innerText = "Password must be at least 6 characters long";
@@ -49,8 +50,10 @@ async function register(event) {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { full_name: name } },
+      options: { data: { full_name: name, role: "user" } },
     });
+
+    console.log("data: ", data, "error: ", error);
 
     if (error) {
       msg.className = "message error";
@@ -59,7 +62,8 @@ async function register(event) {
     }
 
     msg.className = "message success";
-    msg.innerText = "Registration successful! Check your email to confirm your account.";
+    msg.innerText =
+      "Registration successful! Check your email to confirm your account.";
 
     setTimeout(() => {
       window.location.href = "login.html";
@@ -128,7 +132,9 @@ function hideAddBusinessForm() {
 async function addBusiness(event) {
   event.preventDefault();
   const name = document.getElementById("business-name").value.trim();
-  const description = document.getElementById("business-description").value.trim();
+  const description = document
+    .getElementById("business-description")
+    .value.trim();
   const msg = document.getElementById("form-msg");
 
   try {
@@ -142,7 +148,8 @@ async function addBusiness(event) {
     });
 
     const data = await res.json();
-    if (!data.success) throw new Error(data.message || "Failed to add business");
+    if (!data.success)
+      throw new Error(data.message || "Failed to add business");
 
     hideAddBusinessForm();
     await fetchBusinesses();
@@ -201,7 +208,8 @@ async function approveBusiness(id) {
       headers: { Authorization: `Bearer ${getToken()}` },
     });
     const data = await res.json();
-    if (!data.success) throw new Error(data.message || "Failed to approve business");
+    if (!data.success)
+      throw new Error(data.message || "Failed to approve business");
 
     await fetchBusinesses();
     showSuccessMessage("Business approved successfully");
@@ -224,7 +232,8 @@ async function rejectBusiness(id) {
       body: JSON.stringify({ reason }),
     });
     const data = await res.json();
-    if (!data.success) throw new Error(data.message || "Failed to reject business");
+    if (!data.success)
+      throw new Error(data.message || "Failed to reject business");
 
     await fetchBusinesses();
     showSuccessMessage("Business rejected successfully");
@@ -241,6 +250,7 @@ async function fetchUsers() {
     const res = await fetch(`${API_URL}/admin/users`, {
       headers: { Authorization: `Bearer ${getToken()}` },
     });
+    console.log("Response: ", res);
     const data = await res.json();
     if (!data.success) throw new Error(data.message || "Failed to load users");
 
@@ -292,13 +302,18 @@ document.addEventListener("DOMContentLoaded", () => {
   const token = getToken();
   const user = getUser();
 
+  console.log("User: ", user);
+    console.log("Token: ", token);
+
   if (window.location.pathname.includes("dashboard.html")) {
     const welcome = document.getElementById("welcome-text");
     if (welcome) {
       welcome.innerText = `Welcome ${user?.email ? " " + user.email : ""}!`;
     }
 
-    if (token && user?.role === "admin") {
+    console.log("Role: ", user?.user_metadata?.role)
+
+    if (token && user?.user_metadata?.role === "admin") {
       document.getElementById("admin-section").style.display = "block";
       fetchUsers();
       fetchBusinesses();
