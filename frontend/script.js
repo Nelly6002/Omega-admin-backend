@@ -159,37 +159,35 @@ async function fetchBusinesses() {
       headers: { Authorization: `Bearer ${getToken()}` },
     });
     const data = await res.json();
-    if (!data.success) throw new Error(data.message || "Failed to load businesses");
+    if (!data.success)
+      throw new Error(data.message || "Failed to load businesses");
 
     const businessList = document.getElementById("business-list");
     if (!businessList) return;
 
     businessList.innerHTML = data.data
-      .map(
-        (business) => `
-        <div class="business-card ${business.status || "pending"}">
-          <h3>${business.name}</h3>
-          <p>${business.description || ""}</p>
-          <p>Status: ${business.status || "Pending"}</p>
-          ${
-            getUser()?.role === "admin"
-              ? `
-            <div class="actions">
-              ${
-                business.status !== "approved"
-                  ? <button onclick="approveBusiness(${business.id})">Approve</button>
-                  : ""
-              }
-              ${
-                business.status !== "rejected"
-                  ? <button onclick="rejectBusiness(${business.id})">Reject</button>
-                  : ""
-              }
-            </div>`
-              : ""
-          }
-        </div>`
-      )
+      .map((business) => {
+        const approveButton =
+          business.status !== "approved"
+            ? `<button onclick="approveBusiness(${business.id})">Approve</button>`
+            : "";
+        const rejectButton =
+          business.status !== "rejected"
+            ? `<button onclick="rejectBusiness(${business.id})">Reject</button>`
+            : "";
+
+        return `
+          <div class="business-card ${business.status || "pending"}">
+            <h3>${business.name}</h3>
+            <p>${business.description || ""}</p>
+            <p>Status: ${business.status || "Pending"}</p>
+            ${
+              getUser()?.role === "admin"
+                ? `<div class="actions">${approveButton}${rejectButton}</div>`
+                : ""
+            }
+          </div>`;
+      })
       .join("");
   } catch (err) {
     showError(err.message);
