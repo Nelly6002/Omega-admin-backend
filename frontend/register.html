@@ -1,0 +1,69 @@
+<!DOCTYPE html><!DOCTYPE html>
+
+<html lang="en"><html lang="en">
+
+<head><head>
+
+    <meta charset="UTF-8">    <meta charset="UTF-8">
+
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Register - Omega</title>    <title>Register - Omega</title>
+
+    <link rel="stylesheet" href="style.css">    <link rel="stylesheet" href="style.css">
+
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+
+    <script src="supabaseClient.js"></script>    <script src="supabaseClient.js"></script>
+
+</head></head>
+
+<body><body>
+
+    <div class="container">    <div class="container">
+
+        <div class="form-box">        <div class="form-box">
+
+            <h2>Register Account</h2>            <h2>Register Account</h2>
+
+            <form onsubmit="return register(event)">            <form onsubmit="return register(event)">
+
+                <div class="input-group">                <div class="input-group">
+
+                    <input type="text" id="name" placeholder="Full Name" required>                    <input type="text" id="name" placeholder="Full Name" required>
+
+                </div>                </div>
+
+                <div class="input-group">                <div class="input-group">
+
+                    <input type="email" id="email" placeholder="Email" required>                    <input type="email" id="email" placeholder="Email" required>
+
+                </div>                </div>
+
+                <div class="input-group">                <div class="input-group">
+
+                    <input type="password" id="password" placeholder="Password" required minlength="6">                    <input type="password" id="password" placeholder="Password" required>
+
+                </div>                </div>
+
+                <button type="submit" class="btn">Register</button>                <button type="submit" class="btn">Register</button>
+
+            </form>            </form>
+
+            <p id="msg" class="message"></p>            <p id="msg" class="message"></p>
+
+            <p class="footer-text">            <p class="footer-text">
+
+                Already have an account? <a href="login.html">Login here</a>                Already have an account? <a href="login.html">Login here</a>
+
+            </p>            </p>
+
+        </div>        </div>
+
+    </div>    </div>
+
+    <script src="script.js"></script>    <script src="script.js"></script>
+
+</body></body>
+
+</html></html>
