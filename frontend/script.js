@@ -33,7 +33,7 @@ function getUser() {
 function logout() {
   localStorage.removeItem("token");
   localStorage.removeItem("user");
-  window.location.href = "login.html";
+  window.location.href = "";
 }
 
 // ========================
@@ -86,7 +86,7 @@ async function register(event) {
     msg.innerText = "Registration successful! Redirecting to login...";
 
     setTimeout(() => {
-      window.location.href = "login.html";
+      window.location.href = "index.html";
     }, 2000);
 
   } catch (err) {
@@ -381,7 +381,7 @@ async function fetchCurrentUser() {
   try {
     const token = getToken();
     if (!token) {
-      window.location.href = "login.html";
+      window.location.href = "index.html";
       return null;
     }
 
@@ -424,7 +424,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   if (window.location.pathname.includes("dashboard.html")) {
     if (!token || !user) {
       console.log("No token or user, redirecting to login");
-      window.location.href = "login.html";
+      window.location.href = "index.html";
       return;
     }
 
@@ -463,7 +463,7 @@ document.addEventListener("DOMContentLoaded", async () => {
   }
 
   // Check if already logged in on login/register pages
-  if ((window.location.pathname.includes("login.html") || 
+  if ((window.location.pathname.includes("index.html") || 
        window.location.pathname.includes("register.html")) && 
       token) {
     window.location.href = "dashboard.html";
