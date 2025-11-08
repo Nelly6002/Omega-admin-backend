@@ -7,21 +7,30 @@ dotenv.config();
 export const verifyToken = async (req, res, next) => {
   const authHeader = req.headers.authorization;
   const token = authHeader?.split(" ")[1];
+  console.log(token)
   if (!token) return res.status(401).json({ success: false, message: "No token provided" });
 
   // If SUPABASE_URL is provided, try verifying via Supabase /auth/v1/user
   if (process.env.SUPABASE_URL) {
     try {
-      const userResp = await fetch(`${process.env.SUPABASE_URL}/auth/v1/user`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const userResp = await fetch(`${process.env.SUPABASE_URL}/auth/v1/user`,
+         {
+          method: "GET",
+        headers: { Authorization: `Bearer ${token}`,
+      apikey: process.env.SUPABASE_ANON_KEY},
 
+      });
+      // console.log(userResp);
+      
+      
       if (userResp.ok) {
         const supaUser = await userResp.json();
+        console.log(supaUser);
         // Try to look up local user by email to get role/id
         if (supaUser?.email) {
           const dbRes = await pool.query("SELECT id, role FROM users WHERE email=$1", [supaUser.email]);
           const local = dbRes.rows[0] || null;
+          console.log(dbRes);
           
           if (!local) {
             return res.status(403).json({ 
@@ -63,6 +72,7 @@ export const verifyToken = async (req, res, next) => {
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
       req.user = decoded;
+      console.log("User from auth middleware: ", decoded);
       return next();
     } catch (err) {
       console.error('Local JWT verification failed:', err.message || err);

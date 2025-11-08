@@ -336,6 +336,7 @@ async function fetchCurrentUser() {
     }
 
     const res = await fetch(`${API_URL}/users/me`, {
+      method: "GET",
       headers: { Authorization: `Bearer ${token}` },
     });
 

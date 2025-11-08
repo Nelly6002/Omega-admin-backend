@@ -6,47 +6,68 @@ dotenv.config();
 
 export const register = async (req, res) => {
   try {
-    console.log('Register attempt:', req.body);
+    console.log('Register attempt - Full request body:', req.body);
+    console.log('Database pool:', pool ? 'Exists' : 'Missing');
+    
     const { name, email, password } = req.body;
     
     if (!name || !email || !password) {
-      console.log('Missing required fields');
+      console.log('Missing fields - Name:', name, 'Email:', email, 'Password:', password ? 'Provided' : 'Missing');
       return res.status(400).json({
         success: false,
         message: "Name, email, and password are required"
       });
     }
 
-    console.log('Hashing password...');
-    const hashed = await bcrypt.hash(password, 10);
-    
-    console.log('Inserting new user into database...');
-    const result = await pool.query(
-      `INSERT INTO users (name, email, password) VALUES ($1, $2, $3) RETURNING *`,
-      [name, email, hashed]
+    // Check if user already exists FIRST
+    console.log('Checking if user already exists...');
+    const existingUser = await pool.query(
+      "SELECT id FROM users WHERE email = $1",
+      [email]
     );
     
-    console.log('User registered successfully:', result.rows[0].email);
-    res.json({ 
-      success: true, 
-      message: "User registered successfully", 
-      data: {
-        id: result.rows[0].id,
-        name: result.rows[0].name,
-        email: result.rows[0].email
-      }
-    });
-  } catch (err) {
-    console.error('Registration error:', err);
-    if (err.code === '23505') { // Unique violation error code
+    if (existingUser.rows.length > 0) {
+      console.log('User already exists with email:', email);
       return res.status(400).json({ 
         success: false, 
         message: "Email already exists" 
       });
     }
+
+    console.log('Hashing password...');
+    const hashed = await bcrypt.hash(password, 10);
+    console.log('Password hashed successfully');
+    
+    console.log('Inserting new user into database...');
+    
+    const result = await pool.query(
+      `INSERT INTO users (name, email, password) VALUES ($1, $2, $3) RETURNING id, name, email, created_at`,
+      [name, email, hashed]
+    );
+    
+    console.log('User registered successfully:', result.rows[0]);
+    res.status(201).json({ 
+      success: true, 
+      message: "User registered successfully", 
+      data: result.rows[0]
+    });
+  } catch (err) {
+    console.error('Registration error details:');
+    console.error('Error name:', err.name);
+    console.error('Error code:', err.code);
+    console.error('Error message:', err.message);
+    console.error('Error stack:', err.stack);
+    
+    if (err.code === '23505') {
+      return res.status(400).json({ 
+        success: false, 
+        message: "Email already exists" 
+      });
+    }
+    
     res.status(500).json({ 
       success: false, 
-      message: err.message || "Error during registration" 
+      message: "Internal server error during registration" 
     });
   }
 };
