@@ -76,6 +76,7 @@ export const register = async (req, res) => {
 };
 
 export const login = async (req, res) => {
+ // In your authController.js - login function
   try {
     console.log('Login attempt:', req.body);
     const { email, password } = req.body;
@@ -101,23 +102,27 @@ export const login = async (req, res) => {
       });
     }
 
-    // Get user profile (RLS will ensure users can only access their own data)
+    // Get user profile from database
     const { data: userProfile, error: profileError } = await supabase
       .from('users')
       .select('*')
       .eq('id', authData.user.id)
       .single();
 
-    if (profileError) {
+    if (profileError || !userProfile) {
       console.error('Error fetching user profile:', profileError);
+      return res.status(500).json({
+        success: false,
+        message: "User profile not found"
+      });
     }
 
-    // Generate JWT token
+    // Generate JWT token with user ID
     const token = jwt.sign(
       { 
-        id: authData.user.id, 
-        email: authData.user.email,
-        role: userProfile?.role || 'user'
+        id: userProfile.id, // Use the UUID from your users table
+        email: userProfile.email,
+        role: userProfile.role
       },
       process.env.JWT_SECRET,
       { expiresIn: "1d" }
@@ -128,10 +133,10 @@ export const login = async (req, res) => {
       success: true,
       token,
       data: {
-        id: authData.user.id,
-        email: authData.user.email,
-        name: userProfile?.name,
-        role: userProfile?.role || 'user'
+        id: userProfile.id,
+        email: userProfile.email,
+        name: userProfile.name,
+        role: userProfile.role
       }
     });
 

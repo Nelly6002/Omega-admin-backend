@@ -1,88 +1,105 @@
+// middleware/authMiddleware.js
 import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
-import { pool } from "../database/db.js";
+import { supabase } from "../database/supabase.js";
 dotenv.config();
 
-// Verifies either local JWT (JWT_SECRET) or Supabase Auth token.
+// Simple JWT verification middleware for Supabase
 export const verifyToken = async (req, res, next) => {
-  const authHeader = req.headers.authorization;
-  const token = authHeader?.split(" ")[1];
-  console.log(token)
-  if (!token) return res.status(401).json({ success: false, message: "No token provided" });
-
-  // If SUPABASE_URL is provided, try verifying via Supabase /auth/v1/user
-  if (process.env.SUPABASE_URL) {
-    try {
-      const userResp = await fetch(`${process.env.SUPABASE_URL}/auth/v1/user`,
-         {
-          method: "GET",
-        headers: { Authorization: `Bearer ${token}`,
-      apikey: process.env.SUPABASE_ANON_KEY},
-
-      });
-      // console.log(userResp);
-      
-      
-      if (userResp.ok) {
-        const supaUser = await userResp.json();
-        console.log(supaUser);
-        // Try to look up local user by email to get role/id
-        if (supaUser?.email) {
-          const dbRes = await pool.query("SELECT id, role FROM users WHERE email=$1", [supaUser.email]);
-          const local = dbRes.rows[0] || null;
-          console.log(dbRes);
-          
-          if (!local) {
-            return res.status(403).json({ 
-              success: false, 
-              message: "User not found in local database. Please contact administrator." 
-            });
-          }
-          
-          req.user = {
-            id: local.id,
-            email: supaUser.email,
-            supabase_id: supaUser.id,
-            role: local.role
-          };
-          return next();
-        } else {
-          return res.status(401).json({ success: false, message: "Invalid user data from Supabase" });
-        }
-      } else {
-        // Supabase verification failed
-        const errorData = await userResp.json().catch(() => ({}));
-        console.error('Supabase token verification failed:', userResp.status, errorData);
-        return res.status(401).json({ 
-          success: false, 
-          message: errorData.message || "Invalid or expired token" 
-        });
-      }
-    } catch (err) {
-      console.error('Supabase token verification error:', err.message || err);
-      return res.status(500).json({ 
+  try {
+    const authHeader = req.headers.authorization;
+    const token = authHeader?.split(" ")[1];
+    
+    if (!token) {
+      return res.status(401).json({ 
         success: false, 
-        message: "Token verification service unavailable" 
+        message: "No token provided" 
       });
     }
-  }
 
-  // Fallback to local JWT verification if SUPABASE_URL is not set
-  if (process.env.JWT_SECRET) {
-    try {
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      req.user = decoded;
-      console.log("User from auth middleware: ", decoded);
-      return next();
-    } catch (err) {
-      console.error('Local JWT verification failed:', err.message || err);
-      return res.status(401).json({ success: false, message: "Invalid token" });
+    console.log('Verifying token...');
+
+    // Verify JWT token (the one you generate in login)
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    console.log('Decoded token:', decoded);
+
+    // Get user from database to verify they still exist and get latest role
+    const { data: user, error } = await supabase
+      .from('users')
+      .select('id, name, email, role')
+      .eq('id', decoded.id)
+      .single();
+
+    if (error || !user) {
+      console.error('User not found in database:', error);
+      return res.status(401).json({ 
+        success: false, 
+        message: "User not found or token invalid" 
+      });
     }
+
+    // Add user to request object
+    req.user = {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role
+    };
+
+    console.log('User authenticated:', req.user.email, 'Role:', req.user.role);
+    next();
+    
+  } catch (err) {
+    console.error('Auth middleware error:', err.message);
+
+    if (err.name === 'JsonWebTokenError') {
+      return res.status(401).json({ 
+        success: false, 
+        message: "Invalid token" 
+      });
+    }
+
+    if (err.name === 'TokenExpiredError') {
+      return res.status(401).json({ 
+        success: false, 
+        message: "Token expired" 
+      });
+    }
+
+    res.status(500).json({ 
+      success: false, 
+      message: "Authentication failed" 
+    });
+  }
+};
+
+// Admin role check middleware
+export const isAdmin = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({ 
+      success: false, 
+      message: "Authentication required" 
+    });
   }
 
-  // No auth method configured
-  return res.status(500).json({ 
-    success: false, 
-    message: "Authentication not configured" 
-  });
+  if (req.user.role !== "admin") {
+    return res.status(403).json({ 
+      success: false, 
+      message: "Admin access required" 
+    });
+  }
+  
+  console.log('Admin access granted for:', req.user.email);
+  next();
+};
+
+// Optional: Middleware to require authentication but not specific role
+export const requireAuth = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({ 
+      success: false, 
+      message: "Authentication required" 
+    });
+  }
+  next();
 };
