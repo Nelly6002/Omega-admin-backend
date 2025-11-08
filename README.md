@@ -1,167 +1,217 @@
 # Omega Admin Backend
 
-> A lightweight admin backend for managing users, businesses and roles. This repository contains the Express-based API server used by the Omega admin panel.
+A full-stack admin dashboard application with Express backend, HTML/CSS/JS frontend, and Supabase integration for database management.
 
-## Table of contents
+## Table of Contents
 
-- Project overview
-- Features
-- Requirements
-- Quick start
-- Environment variables
-- Available scripts
-- Project structure
-- API overview (routes)
-- Development notes & troubleshooting
-- Contributing
-- License
+- [Project Overview](#project-overview)
+- [Features](#features)
+- [Project Structure](#project-structure)
+- [Prerequisites](#prerequisites)
+- [Getting Started](#getting-started)
+  - [Backend Setup](#backend-setup)
+  - [Frontend Setup](#frontend-setup)
+  - [Database Setup](#database-setup)
+- [Environment Variables](#environment-variables)
+- [Available Scripts](#available-scripts)
+- [Database Management](#database-management)
+- [API Documentation](#api-documentation)
+- [Contributing](#contributing)
+- [License](#license)
 
-## Project overview
+## Project Overview
 
-This project is a Node.js / Express backend that exposes endpoints for authentication, user management, business management and admin operations. It is designed to be used together with an admin frontend but also works as a standalone API.
+Omega Admin is a comprehensive admin dashboard solution that combines a Node.js/Express backend with a vanilla JavaScript frontend. It features Supabase integration for robust database management and row-level security.
 
 ## Features
 
-- JWT-based authentication
-- Role-based access (admin / user)
-- PostgreSQL database connection
-- Modular controllers, models and routes
+- **Authentication System**
+  - User registration and login
+  - JWT-based authentication
+  - Role-based access control
+- **Backend Features**
+  - Express.js REST API
+  - PostgreSQL with Supabase integration
+  - Row Level Security (RLS) policies
+  - Middleware for auth and role verification
+- **Frontend Features**
+  - Responsive dashboard interface
+  - Login and registration pages
+  - Direct Supabase client integration
+  - Clean and modern UI with custom CSS
 
-## Requirements
+## Project Structure
+
+```
+omega-admin-backend/
+├── backend/
+│   ├── controllers/         # Request handlers
+│   ├── database/           # Database configuration and schemas
+│   ├── middleware/         # Auth and role middlewares
+│   ├── routes/            # API route definitions
+│   ├── scripts/           # Database management scripts
+│   ├── utils/             # Helper functions
+│   ├── server.js          # Express app entry point
+│   └── package.json       # Backend dependencies
+│
+├── frontend/
+│   ├── dashboard.html     # Admin dashboard page
+│   ├── login.html        # User login page
+│   ├── register.html     # User registration page
+│   ├── script.js         # Frontend JavaScript
+│   ├── style.css         # Global styles
+│   └── supabaseClient.js # Supabase configuration
+│
+└── .gitignore            # Git ignore rules
+```
+
+## Prerequisites
 
 - Node.js 16+ (recommended)
-- npm (or yarn)
-- PostgreSQL (or any Postgres-compatible service)
+- npm or yarn
+- Supabase account and project
+- Modern web browser
+- PostgreSQL (if running locally)
 
-Note: The code uses ES module `import` syntax. If you run into an "Unexpected token import" error, add "type": "module" to `package.json` or run Node with an appropriate transpiler.
+## Getting Started
 
-## Quick start (Windows PowerShell)
+### Backend Setup
 
-1. Clone the repo and change into the project folder.
+1. Navigate to the backend directory:
+
+```bash
+cd backend
+```
+
 2. Install dependencies:
 
-```powershell
+```bash
 npm install
 ```
 
-3. Create a `.env` file in the project root (see the Environment variables section below).
+3. Create `.env` file (see Environment Variables section)
 
-4. Start the dev server (uses nodemon):
+4. Initialize the database:
 
-```powershell
+```bash
+node scripts/migrate.js
+node scripts/seedAdmin.js
+```
+
+5. Start the server:
+
+```bash
 npm run dev
 ```
 
-By default the server will try to read configuration from environment variables. See the environment section next.
+### Frontend Setup
 
-## Environment variables
+1. Open `frontend/supabaseClient.js` and update Supabase credentials
+2. Serve the frontend directory using a local server
+3. Open `login.html` in your browser
 
-Create a `.env` file containing at least the values below. Example:
+### Database Setup
 
+1. Run the initial schema:
+
+```bash
+node scripts/migrate.js
 ```
+
+2. Apply RLS policies:
+
+```bash
+node scripts/createSupabaseAdmin.js
+```
+
+3. Test the connection:
+
+```bash
+node scripts/testDb.js
+```
+
+## Environment Variables
+
+Create a `.env` file in the backend directory:
+
+```env
 PORT=4000
 NODE_ENV=development
-DATABASE_URL=postgres://username:password@localhost:5432/omega_db
-JWT_SECRET=your_jwt_secret_here
-
-# Optional: any other custom config used by the app
+DATABASE_URL=your_supabase_connection_string
+SUPABASE_URL=your_supabase_project_url
+SUPABASE_KEY=your_supabase_anon_key
+JWT_SECRET=your_jwt_secret
 ```
 
-- PORT — port the server listens on (default often 3000 or 4000)
-- NODE_ENV — `development` or `production` (the code uses this for conditional SSL options)
-- DATABASE_URL — Postgres connection string (recommended) or configure pool options directly in `database/db.js`
-- JWT_SECRET — secret used to sign JWT tokens for authentication
+## Available Scripts
 
-Important: Do not commit `.env` to source control. Keep secrets safe.
+Backend scripts:
 
-## Available scripts
+- `npm run dev` - Start development server
+- `node scripts/migrate.js` - Run database migrations
+- `node scripts/seedAdmin.js` - Create initial admin user
+- `node scripts/createSupabaseAdmin.js` - Set up Supabase admin
+- `node scripts/testDb.js` - Test database connection
 
-- `npm run dev` — start the app with `nodemon` (development)
-- `npm test` — currently a placeholder (see package.json)
+## Database Management
 
-If you want to run the app with plain Node (no nodemon):
+The project uses PostgreSQL with Supabase and includes:
 
-```powershell
-node server.js
-```
+- `database/schema.sql` - Database schema definition
+- `database/rls_policies.sql` - Row Level Security policies
+- `scripts/migrate.js` - Database migration tool
+- `scripts/seedAdmin.js` - Admin user seeding
 
-If you see errors about `import`/`export` in Node, add this to `package.json`:
+### Row Level Security
 
-```json
-"type": "module"
-```
+RLS policies are defined in `database/rls_policies.sql` and enforced by Supabase. They control:
 
-## Project structure
+- User access to their own data
+- Admin access to all data
+- Business data visibility
 
-Top-level layout (relevant files/folders):
+## API Documentation
 
-- `server.js` — app entry (Express setup)
-- `controllers/` — request handlers for routes
-- `routes/` — route declarations (authRoutes, userRoutes, adminRoutes, businessRoutes)
-- `models/` — database interaction helpers
-- `database/` — DB pool & helpers
-- `middleware/` — authentication & role middleware
-- `utils/` — logger, response helpers
+### Authentication Endpoints
 
-## API overview (routes)
+- POST `/auth/register` - User registration
+- POST `/auth/login` - User login
 
-The repository contains modular route files. The following summarizes expected endpoints (adjust according to actual controllers):
+### User Endpoints
 
-- Authentication
+- GET `/user` - Get user profile
+- PUT `/user` - Update user profile
+- DELETE `/user` - Delete user account
 
-  - POST /auth/register — register a new user
-  - POST /auth/login — login and receive a JWT
+### Business Endpoints
 
-- Users
+- GET `/businesses` - List businesses
+- POST `/businesses` - Create business
+- PUT `/businesses/:id` - Update business
+- DELETE `/businesses/:id` - Delete business
 
-  - GET /user — get current user profile (requires auth)
-  - PUT /user — update profile (requires auth)
-  - DELETE /user — delete account (requires auth)
+### Admin Endpoints
 
-- Businesses
+- GET `/admin/users` - List all users
+- GET `/admin/businesses` - List all businesses
+- POST `/admin/users/:id/role` - Update user role
 
-  - GET /businesses — list businesses
-  - POST /businesses — create business (requires auth/role)
-  - PUT /businesses/:id — update business
-  - DELETE /businesses/:id — delete business
-
-- Admin
-  - Admin routes are protected by role middleware (e.g., `/admin/*`)
-
-Replace/extend these routes to reflect your actual implementation in `routes/*.js` and `controllers/*.js`.
-
-## Development notes & troubleshooting
-
-- If you get runtime errors about database connections, ensure `DATABASE_URL` is correct and Postgres is reachable.
-- If you see SSL-related errors in production, check the `ssl` options in `database/db.js` — the code already uses a conditional `rejectUnauthorized: false` when `NODE_ENV === 'production'`.
-- If imports fail (syntax errors), add `"type": "module"` to `package.json` or convert to CommonJS `require()`.
-- To add a healthcheck, expose a simple GET `/health` route in `server.js` that returns 200 and basic service info.
+All protected routes require a valid JWT token in the Authorization header.
 
 ## Contributing
 
-1. Fork the repo
-2. Create a branch for your feature or bugfix
-3. Open a pull request with a clear description and tests if applicable
+1. Fork the repository
+2. Create a feature branch
+3. Commit your changes
+4. Push to the branch
+5. Open a pull request
 
-If you change the DB schema, include migration steps or SQL in the PR description.
+Please ensure you update both frontend and backend tests as needed.
 
 ## License
 
-This project currently lists ISC in `package.json`. Update this file and this README if you choose another license.
-
-## Contact
-
-If you need help understanding parts of the code, share the controller or route file and I can help update the README with exact endpoint signatures and example requests.
+ISC License - See LICENSE file for details.
 
 ---
 
-Summary of what I added:
-
-- A clear quick-start for Windows PowerShell users
-- Environment and troubleshooting notes
-- API endpoint summary to be filled in as controllers are implemented
-
-If you want, I can now:
-
-1. Populate the API endpoint table with exact request/response examples by reading the implemented controllers.
-2. Add a short Postman collection or cURL examples for common flows (register/login, get profile).
+For detailed API documentation and frontend component details, please check the respective directories' documentation files.
