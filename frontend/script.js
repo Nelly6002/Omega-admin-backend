@@ -12,7 +12,12 @@ function getToken() {
 function getUser() {
   const u = localStorage.getItem("user");
   try {
-    return u ? JSON.parse(u) : null;
+    const user = u ? JSON.parse(u) : null;
+    // Return role from user object if available, otherwise check user_metadata
+    if (user && !user.role && user.user_metadata) {
+      user.role = user.user_metadata.role;
+    }
+    return user;
   } catch {
     return null;
   }
@@ -247,15 +252,35 @@ async function rejectBusiness(id) {
 // ========================
 async function fetchUsers() {
   try {
+    const token = getToken();
+    if (!token) {
+      showError("No authentication token found. Please login again.");
+      return;
+    }
+
     const res = await fetch(`${API_URL}/admin/users`, {
-      headers: { Authorization: `Bearer ${getToken()}` },
+      headers: { Authorization: `Bearer ${token}` },
     });
-    console.log("Response: ", res);
+
     const data = await res.json();
-    if (!data.success) throw new Error(data.message || "Failed to load users");
+
+    if (!res.ok) {
+      throw new Error(
+        data.message || `Failed to load users: ${res.status} ${res.statusText}`
+      );
+    }
+
+    if (!data.success) {
+      throw new Error(data.message || "Failed to load users");
+    }
 
     const userList = document.getElementById("user-list");
     if (!userList) return;
+
+    if (!data.data || data.data.length === 0) {
+      userList.innerHTML = "<p>No users found.</p>";
+      return;
+    }
 
     userList.innerHTML = data.data
       .map(
@@ -272,7 +297,11 @@ async function fetchUsers() {
       )
       .join("");
   } catch (err) {
-    showError(err.message);
+    console.error("Error fetching users:", err);
+    showError(
+      err.message ||
+        "Failed to load users. Please check your connection and try again."
+    );
   }
 }
 
@@ -296,24 +325,71 @@ function showSuccessMessage(message) {
 }
 
 // ========================
+// FETCH CURRENT USER INFO
+// ========================
+async function fetchCurrentUser() {
+  try {
+    const token = getToken();
+    if (!token) {
+      window.location.href = "login.html";
+      return null;
+    }
+
+    const res = await fetch(`${API_URL}/users/me`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (!res.ok) {
+      if (res.status === 401) {
+        logout();
+        return null;
+      }
+      throw new Error("Failed to fetch user info");
+    }
+
+    const data = await res.json();
+    if (data.success && data.data) {
+      // Update localStorage with role info
+      const currentUser = getUser();
+      if (currentUser) {
+        currentUser.role = data.data.role;
+        currentUser.name = data.data.name;
+        localStorage.setItem("user", JSON.stringify(currentUser));
+      }
+      return data.data;
+    }
+    return null;
+  } catch (err) {
+    console.error("Error fetching user info:", err);
+    return null;
+  }
+}
+
+// ========================
 // INITIALIZE DASHBOARD
 // ========================
-document.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", async () => {
   const token = getToken();
   const user = getUser();
 
-  console.log("User: ", user);
-    console.log("Token: ", token);
-
   if (window.location.pathname.includes("dashboard.html")) {
-    const welcome = document.getElementById("welcome-text");
-    if (welcome) {
-      welcome.innerText = `Welcome ${user?.email ? " " + user.email : ""}!`;
+    if (!token) {
+      window.location.href = "login.html";
+      return;
     }
 
-    console.log("Role: ", user?.user_metadata?.role)
+    // Fetch current user info to get the latest role from database
+    const userInfo = await fetchCurrentUser();
+    const userRole = userInfo?.role || user?.user_metadata?.role || "user";
 
-    if (token && user?.user_metadata?.role === "admin") {
+    const welcome = document.getElementById("welcome-text");
+    if (welcome) {
+      const displayName =
+        userInfo?.name || user?.user_metadata?.full_name || user?.email || "";
+      welcome.innerText = `Welcome${displayName ? " " + displayName : ""}!`;
+    }
+
+    if (userRole === "admin") {
       document.getElementById("admin-section").style.display = "block";
       fetchUsers();
       fetchBusinesses();

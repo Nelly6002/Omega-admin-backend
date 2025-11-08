@@ -1,5 +1,21 @@
 import { pool } from "../database/db.js";
 
+export const getMe = async (req, res) => {
+  // req.user is set by authMiddleware
+  try {
+    const result = await pool.query(
+      "SELECT id, name, email, role FROM users WHERE id=$1",
+      [req.user.id]
+    );
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, message: "User not found" });
+    }
+    res.json({ success: true, data: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
+  }
+};
+
 export const getUsers = async (req, res) => {
   const result = await pool.query("SELECT id, name, email, role FROM users");
   res.json({ success: true, data: result.rows });
