@@ -5,8 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Dashboard - Omega</title>
     <link rel="stylesheet" href="style.css" />
-    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
-    <script src="supabaseClient.js"></script>
   </head>
 
   <body>
@@ -20,24 +18,34 @@
     <div class="container">
       <h2 id="welcome-text">Dashboard</h2>
 
+      <!-- Admin Section -->
       <div id="admin-section" style="display: none">
         <div class="dashboard-section">
           <h3>User Management</h3>
           <button onclick="fetchUsers()" class="btn">Refresh Users</button>
           <div id="user-list" class="list-container"></div>
         </div>
-      </div>
 
-      <div id="user-section" style="display: none">
         <div class="dashboard-section">
-          <h3>Business Management</h3>
-          <button onclick="showAddBusinessForm()" class="btn">
-            Add New Business
-          </button>
-          <div id="business-list" class="list-container"></div>
+          <h3>Business Management (Admin)</h3>
+          <p>All businesses - pending approval</p>
+          <button onclick="fetchAllBusinesses()" class="btn">Refresh Businesses</button>
+          <div id="admin-business-list" class="list-container"></div>
         </div>
       </div>
-    </div>
+
+      <!-- User Section -->
+<div id="user-section" style="display: none">
+  <div class="dashboard-section">
+    <h3>My Businesses</h3>
+    <button onclick="showAddBusinessForm()" class="btn">
+      Add New Business
+    </button>
+    <!-- Change this button: -->
+    <button onclick="fetchUserBusinesses()" class="btn">Refresh My Businesses</button>
+    <div id="business-list" class="list-container"></div>
+  </div>
+</div>
 
     <div id="overlay" class="overlay"></div>
 

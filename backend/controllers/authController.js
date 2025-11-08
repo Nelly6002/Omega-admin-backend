@@ -35,17 +35,20 @@ export const register = async (req, res) => {
       });
     }
 
-    // Use admin client to create user profile (bypasses RLS for initial creation)
+    // Use upsert instead of insert for user profile - don't overwrite existing roles
     const { data: userData, error: userError } = await adminSupabase
       .from('users')
-      .insert([
+      .upsert([
         {
           id: authData.user.id,
           email: email,
           name: name,
-          role: 'user' // Default role
+          role: 'user' // Only set for new users, won't overwrite existing roles due to upsert
         }
-      ])
+      ], { 
+        onConflict: 'id',
+        ignoreDuplicates: false // This ensures existing roles are preserved
+      })
       .select()
       .single();
 
@@ -76,7 +79,6 @@ export const register = async (req, res) => {
 };
 
 export const login = async (req, res) => {
- // In your authController.js - login function
   try {
     console.log('Login attempt:', req.body);
     const { email, password } = req.body;
@@ -95,40 +97,74 @@ export const login = async (req, res) => {
     });
 
     if (authError) {
-      console.error('Login error:', authError);
+      console.error('Login auth error:', authError);
       return res.status(401).json({
         success: false,
         message: "Invalid email or password"
       });
     }
 
-    // Get user profile from database
-    const { data: userProfile, error: profileError } = await supabase
+    console.log('Auth successful, user ID:', authData.user.id);
+
+    // Get user profile from database - use upsert to handle both cases
+    let userProfile;
+    const { data: existingProfile, error: profileError } = await supabase
       .from('users')
       .select('*')
       .eq('id', authData.user.id)
       .single();
 
-    if (profileError || !userProfile) {
-      console.error('Error fetching user profile:', profileError);
-      return res.status(500).json({
-        success: false,
-        message: "User profile not found"
-      });
+    console.log('Existing profile:', existingProfile);
+
+    if (profileError || !existingProfile) {
+      console.log('User profile not found, creating one automatically...');
+      
+      // Auto-create user profile if it doesn't exist - default to 'user' role
+      const profileData = {
+        id: authData.user.id,
+        email: authData.user.email,
+        name: authData.user.user_metadata?.name || 
+              authData.user.user_metadata?.full_name || 
+              authData.user.email.split('@')[0],
+        role: 'user' // Default role for new users
+      };
+
+      console.log('Creating new profile with data:', profileData);
+
+      const { data: newProfile, error: createError } = await adminSupabase
+        .from('users')
+        .upsert(profileData, { onConflict: 'id' })
+        .select()
+        .single();
+
+      if (createError) {
+        console.error('Error auto-creating user profile:', createError);
+        return res.status(500).json({
+          success: false,
+          message: `User profile creation failed: ${createError.message}`
+        });
+      }
+
+      userProfile = newProfile;
+      console.log('Auto-created user profile successfully:', userProfile);
+    } else {
+      // Profile exists - PRESERVE THE EXISTING ROLE
+      userProfile = existingProfile;
+      console.log('Found existing user profile, preserving role:', userProfile.role);
     }
 
     // Generate JWT token with user ID
     const token = jwt.sign(
       { 
-        id: userProfile.id, // Use the UUID from your users table
+        id: userProfile.id,
         email: userProfile.email,
-        role: userProfile.role
+        role: userProfile.role // Use the actual role from database
       },
       process.env.JWT_SECRET,
       { expiresIn: "1d" }
     );
 
-    console.log('Login successful for user:', email);
+    console.log('Login successful for user:', email, 'with role:', userProfile.role);
     res.json({
       success: true,
       token,
@@ -136,7 +172,7 @@ export const login = async (req, res) => {
         id: userProfile.id,
         email: userProfile.email,
         name: userProfile.name,
-        role: userProfile.role
+        role: userProfile.role // Use the actual role from database
       }
     });
 

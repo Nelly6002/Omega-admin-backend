@@ -3,6 +3,18 @@
 // ========================
 const API_URL = "http://localhost:5000/api";
 // ========================
+// AUTH CHECK
+// ========================
+function checkAuth() {
+  const token = getToken();
+  const user = getUser();
+  
+  if (token && user) {
+    // User is already logged in, redirect to dashboard
+    window.location.href = "dashboard.html";
+  }
+}
+// ========================
 // AUTH HELPERS
 // ========================
 function getToken() {
@@ -12,12 +24,7 @@ function getToken() {
 function getUser() {
   const u = localStorage.getItem("user");
   try {
-    const user = u ? JSON.parse(u) : null;
-    // Return role from user object if available, otherwise check user_metadata
-    if (user && !user.role && user.user_metadata) {
-      user.role = user.user_metadata.role;
-    }
-    return user;
+    return u ? JSON.parse(u) : null;
   } catch {
     return null;
   }
@@ -26,21 +33,25 @@ function getUser() {
 function logout() {
   localStorage.removeItem("token");
   localStorage.removeItem("user");
-  supabase.auth.signOut();
   window.location.href = "login.html";
 }
 
 // ========================
-// REGISTER FUNCTION
+// REGISTER FUNCTION (USING YOUR BACKEND)
 // ========================
 async function register(event) {
   event.preventDefault();
-  const name = document.getElementById("name").value.trim();
-  const email = document.getElementById("email").value.trim();
-  const password = document.getElementById("password").value.trim();
+  
+  // Use FormData to get values by name attribute
+  const formData = new FormData(event.target);
+  const name = formData.get('name').trim();
+  const email = formData.get('email').trim();
+  const password = formData.get('password').trim();
+  
   const msg = document.getElementById("msg");
+  const registerButton = document.querySelector('button[type="submit"]');
 
-  console.log(name, email, password);
+  console.log("Registering:", { name, email, password });
 
   if (password.length < 6) {
     msg.className = "message error";
@@ -49,204 +60,250 @@ async function register(event) {
   }
 
   try {
+    // Show loading state
+    registerButton.disabled = true;
+    registerButton.textContent = "Creating Account...";
     msg.className = "message info";
-    msg.innerText = "Creating account...";
+    msg.innerText = "Creating your account...";
 
-    const { data, error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { data: { full_name: name, role: "user" } },
+    // Call YOUR BACKEND API, not Supabase directly
+    const response = await fetch(`${API_URL}/auth/register`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ name, email, password }),
     });
 
-    console.log("data: ", data, "error: ", error);
+    const result = await response.json();
+    console.log("Registration response:", result);
 
-    if (error) {
-      msg.className = "message error";
-      msg.innerText = error.message || "Registration failed";
-      return;
+    if (!result.success) {
+      throw new Error(result.message || "Registration failed");
     }
 
     msg.className = "message success";
-    msg.innerText =
-      "Registration successful! Check your email to confirm your account.";
+    msg.innerText = "Registration successful! Redirecting to login...";
 
     setTimeout(() => {
       window.location.href = "login.html";
     }, 2000);
+
   } catch (err) {
     console.error("Registration error:", err);
     msg.className = "message error";
-    msg.innerText = "An error occurred. Please try again.";
+    msg.innerText = err.message || "An error occurred. Please try again.";
+  } finally {
+    // Reset button state
+    registerButton.disabled = false;
+    registerButton.textContent = "Register";
   }
 }
-
 // ========================
-// LOGIN FUNCTION
+// LOGIN FUNCTION (USING YOUR BACKEND)
 // ========================
 async function login(event) {
   event.preventDefault();
+  
   const email = document.getElementById("email").value.trim();
   const password = document.getElementById("password").value.trim();
   const msg = document.getElementById("msg");
+  const loginButton = document.querySelector('button[type="submit"]');
 
   try {
+    // Show loading state
+    loginButton.disabled = true;
+    loginButton.textContent = "Logging in...";
     msg.className = "message info";
     msg.innerText = "Logging in...";
 
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
-
-    if (error) {
-      msg.className = "message error";
-      msg.innerText = error.message || "Login failed";
-      return;
-    }
-
-    localStorage.setItem("token", data.session.access_token);
-    localStorage.setItem("user", JSON.stringify(data.user));
-
-    msg.className = "message success";
-    msg.innerText = "Login successful!";
-
-    setTimeout(() => {
-      window.location.href = "dashboard.html";
-    }, 600);
-  } catch (err) {
-    msg.className = "message error";
-    msg.innerText = "An error occurred. Please try again.";
-  }
-}
-
-// ========================
-// BUSINESS MANAGEMENT
-// ========================
-function showAddBusinessForm() {
-  document.getElementById("add-business-form").style.display = "block";
-  document.getElementById("overlay").style.display = "block";
-}
-
-function hideAddBusinessForm() {
-  document.getElementById("add-business-form").style.display = "none";
-  document.getElementById("overlay").style.display = "none";
-  document.getElementById("business-name").value = "";
-  document.getElementById("business-description").value = "";
-}
-
-async function addBusiness(event) {
-  event.preventDefault();
-  const name = document.getElementById("business-name").value.trim();
-  const description = document
-    .getElementById("business-description")
-    .value.trim();
-  const msg = document.getElementById("form-msg");
-
-  try {
-    const res = await fetch(`${API_URL}/businesses`, {
+    // Call YOUR BACKEND API, not Supabase directly
+    const response = await fetch(`${API_URL}/auth/login`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${getToken()}`,
       },
-      body: JSON.stringify({ name, description }),
+      body: JSON.stringify({ email, password }),
     });
 
-    const data = await res.json();
-    if (!data.success)
-      throw new Error(data.message || "Failed to add business");
+    const result = await response.json();
+    console.log("Login response:", result);
 
-    hideAddBusinessForm();
-    await fetchBusinesses();
-    showSuccessMessage("Business created successfully");
+    if (!result.success) {
+      throw new Error(result.message || "Login failed");
+    }
+
+    // Store the token and user data from YOUR BACKEND
+    localStorage.setItem("token", result.token);
+    localStorage.setItem("user", JSON.stringify(result.data));
+
+    msg.className = "message success";
+    msg.innerText = "Login successful! Redirecting...";
+
+    setTimeout(() => {
+      // Redirect to dashboard
+      window.location.href = "dashboard.html";
+    }, 1000);
+
   } catch (err) {
+    console.error("Login error:", err);
     msg.className = "message error";
-    msg.innerText = err.message;
+    msg.innerText = err.message || "An error occurred. Please try again.";
+  } finally {
+    // Reset button state
+    loginButton.disabled = false;
+    loginButton.textContent = "Login";
   }
 }
+// ========================
+// BUSINESS MANAGEMENT FUNCTIONS - UPDATED
+// ========================
 
-async function fetchBusinesses() {
+// For regular users - get their own businesses (all statuses)
+async function fetchUserBusinesses() {
   try {
-    const res = await fetch(`${API_URL}/businesses`, {
-      headers: { Authorization: `Bearer ${getToken()}` },
+    const token = getToken();
+    if (!token) {
+      showError("Please login again");
+      return;
+    }
+
+    console.log("Fetching user businesses...");
+    
+    const response = await fetch(`${API_URL}/businesses/my-businesses`, {
+      headers: { 
+        "Authorization": `Bearer ${token}` 
+      },
     });
-    const data = await res.json();
-    if (!data.success)
-      throw new Error(data.message || "Failed to load businesses");
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const result = await response.json();
+    
+    if (!result.success) {
+      throw new Error(result.message || "Failed to load businesses");
+    }
 
     const businessList = document.getElementById("business-list");
     if (!businessList) return;
 
-    businessList.innerHTML = data.data
+    if (!result.data || result.data.length === 0) {
+      businessList.innerHTML = "<p>No businesses found. Create your first business!</p>";
+      return;
+    }
+
+    console.log("User businesses loaded:", result.data);
+    
+    businessList.innerHTML = result.data
       .map((business) => {
-        const approveButton =
-          business.status !== "approved"
-            ? `<button onclick="approveBusiness(${business.id})">Approve</button>`
-            : "";
-        const rejectButton =
-          business.status !== "rejected"
-            ? `<button onclick="rejectBusiness(${business.id})">Reject</button>`
-            : "";
+        const status = business.status || "pending";
+        const statusClass = status.toLowerCase();
+        const statusText = status === 'approved' ? '✅ Approved' : 
+                          status === 'rejected' ? '❌ Rejected' : '⏳ Pending';
 
         return `
-          <div class="business-card ${business.status || "pending"}">
+          <div class="business-card ${statusClass}">
             <h3>${business.name}</h3>
-            <p>${business.description || ""}</p>
-            <p>Status: ${business.status || "Pending"}</p>
-            ${
-              getUser()?.role === "admin"
-                ? `<div class="actions">${approveButton}${rejectButton}</div>`
-                : ""
-            }
+            <p>${business.description || "No description"}</p>
+            <div class="business-meta">
+              <span class="status ${statusClass}">${statusText}</span>
+              ${business.created_at ? `<span class="date">Created: ${new Date(business.created_at).toLocaleDateString()}</span>` : ""}
+              ${business.rejection_reason ? `<p class="rejection-reason">Reason: ${business.rejection_reason}</p>` : ""}
+            </div>
           </div>`;
       })
       .join("");
   } catch (err) {
-    showError(err.message);
+    console.error("Error fetching user businesses:", err);
+    showError(err.message || "Failed to load businesses");
   }
 }
 
-async function approveBusiness(id) {
+// For admin - get all businesses
+async function fetchAllBusinesses() {
   try {
-    const res = await fetch(`${API_URL}/admin/businesses/${id}/approve`, {
-      method: "PATCH",
-      headers: { Authorization: `Bearer ${getToken()}` },
-    });
-    const data = await res.json();
-    if (!data.success)
-      throw new Error(data.message || "Failed to approve business");
+    const token = getToken();
+    if (!token) {
+      showError("Please login again");
+      return;
+    }
 
-    await fetchBusinesses();
-    showSuccessMessage("Business approved successfully");
-  } catch (err) {
-    showError(err.message);
-  }
-}
-
-async function rejectBusiness(id) {
-  const reason = prompt("Please provide a reason for rejection:");
-  if (!reason) return;
-
-  try {
-    const res = await fetch(`${API_URL}/admin/businesses/${id}/reject`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${getToken()}`,
+    console.log("Fetching all businesses for admin...");
+    
+    const response = await fetch(`${API_URL}/businesses/admin/all`, {
+      headers: { 
+        "Authorization": `Bearer ${token}` 
       },
-      body: JSON.stringify({ reason }),
     });
-    const data = await res.json();
-    if (!data.success)
-      throw new Error(data.message || "Failed to reject business");
 
-    await fetchBusinesses();
-    showSuccessMessage("Business rejected successfully");
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+
+    const result = await response.json();
+    
+    if (!result.success) {
+      throw new Error(result.message || "Failed to load businesses");
+    }
+
+    const businessList = document.getElementById("admin-business-list");
+    if (!businessList) return;
+
+    if (!result.data || result.data.length === 0) {
+      businessList.innerHTML = "<p>No businesses found.</p>";
+      return;
+    }
+
+    console.log("All businesses loaded for admin:", result.data);
+    
+    businessList.innerHTML = result.data
+      .map((business) => {
+        const status = business.status || "pending";
+        const statusClass = status.toLowerCase();
+        const ownerName = business.users?.name || "Unknown";
+        
+        const approveButton = status !== "approved" 
+          ? `<button class="btn-approve" onclick="approveBusiness('${business.id}')">Approve</button>`
+          : `<span class="status-badge approved">Approved</span>`;
+        
+        const rejectButton = status !== "rejected" 
+          ? `<button class="btn-reject" onclick="rejectBusiness('${business.id}')">Reject</button>`
+          : `<span class="status-badge rejected">Rejected</span>`;
+
+        return `
+          <div class="business-card ${statusClass}">
+            <h3>${business.name}</h3>
+            <p>${business.description || "No description"}</p>
+            <div class="business-meta">
+              <span class="status ${statusClass}">Status: ${status}</span>
+              <span class="owner">Owner: ${ownerName}</span>
+              ${business.created_at ? `<span class="date">Created: ${new Date(business.created_at).toLocaleDateString()}</span>` : ""}
+            </div>
+            <div class="admin-actions">
+              ${approveButton}
+              ${rejectButton}
+              ${business.rejection_reason ? `<p class="rejection-reason">Reason: ${business.rejection_reason}</p>` : ""}
+            </div>
+          </div>`;
+      })
+      .join("");
   } catch (err) {
-    showError(err.message);
+    console.error("Error fetching all businesses:", err);
+    showError(err.message || "Failed to load businesses");
   }
 }
 
+// Keep the old fetchBusinesses for backward compatibility (redirects to correct function)
+async function fetchBusinesses() {
+  const user = getUser();
+  if (user?.role === 'admin') {
+    await fetchAllBusinesses();
+  } else {
+    await fetchUserBusinesses();
+  }
+}
 // ========================
 // USER MANAGEMENT (ADMIN)
 // ========================
@@ -254,54 +311,47 @@ async function fetchUsers() {
   try {
     const token = getToken();
     if (!token) {
-      showError("No authentication token found. Please login again.");
+      showError("Please login again");
       return;
     }
 
-    const res = await fetch(`${API_URL}/admin/users`, {
-      headers: { Authorization: `Bearer ${token}` },
+    const response = await fetch(`${API_URL}/admin/users`, {
+      headers: { 
+        "Authorization": `Bearer ${token}` 
+      },
     });
 
-    const data = await res.json();
-
-    if (!res.ok) {
-      throw new Error(
-        data.message || `Failed to load users: ${res.status} ${res.statusText}`
-      );
-    }
-
-    if (!data.success) {
-      throw new Error(data.message || "Failed to load users");
+    const result = await response.json();
+    
+    if (!result.success) {
+      throw new Error(result.message || "Failed to load users");
     }
 
     const userList = document.getElementById("user-list");
     if (!userList) return;
 
-    if (!data.data || data.data.length === 0) {
+    if (!result.data || result.data.length === 0) {
       userList.innerHTML = "<p>No users found.</p>";
       return;
     }
 
-    userList.innerHTML = data.data
-      .map(
-        (user) => `
+    userList.innerHTML = result.data
+      .map((user) => `
         <div class="user-card">
           <h3>${user.name}</h3>
           <p>Email: ${user.email}</p>
-          <p>Role: ${user.role}</p>
+          <p>Role: <span class="role ${user.role}">${user.role}</span></p>
+          <p>Joined: ${user.created_at ? new Date(user.created_at).toLocaleDateString() : "Unknown"}</p>
           <div class="actions">
-            <button onclick="editUser(${user.id})">Edit</button>
-            <button onclick="deleteUser(${user.id})">Delete</button>
+            <button class="btn-edit" onclick="editUser('${user.id}')">Edit</button>
+            <button class="btn-delete" onclick="deleteUser('${user.id}')">Delete</button>
           </div>
         </div>`
       )
       .join("");
   } catch (err) {
     console.error("Error fetching users:", err);
-    showError(
-      err.message ||
-        "Failed to load users. Please check your connection and try again."
-    );
+    showError(err.message || "Failed to load users");
   }
 }
 
@@ -313,7 +363,7 @@ function showError(message) {
   msg.className = "message error";
   msg.innerText = message;
   document.body.appendChild(msg);
-  setTimeout(() => msg.remove(), 3000);
+  setTimeout(() => msg.remove(), 5000);
 }
 
 function showSuccessMessage(message) {
@@ -335,30 +385,25 @@ async function fetchCurrentUser() {
       return null;
     }
 
-    const res = await fetch(`${API_URL}/users/me`, {
-      method: "GET",
-      headers: { Authorization: `Bearer ${token}` },
+    const response = await fetch(`${API_URL}/users/me`, {
+      headers: { 
+        "Authorization": `Bearer ${token}` 
+      },
     });
 
-    if (!res.ok) {
-      if (res.status === 401) {
-        logout();
-        return null;
-      }
-      throw new Error("Failed to fetch user info");
+    if (response.status === 401) {
+      logout();
+      return null;
     }
 
-    const data = await res.json();
-    if (data.success && data.data) {
-      // Update localStorage with role info
-      const currentUser = getUser();
-      if (currentUser) {
-        currentUser.role = data.data.role;
-        currentUser.name = data.data.name;
-        localStorage.setItem("user", JSON.stringify(currentUser));
-      }
-      return data.data;
+    const result = await response.json();
+    
+    if (result.success && result.data) {
+      // Update localStorage with fresh user data
+      localStorage.setItem("user", JSON.stringify(result.data));
+      return result.data;
     }
+    
     return null;
   } catch (err) {
     console.error("Error fetching user info:", err);
@@ -373,30 +418,214 @@ document.addEventListener("DOMContentLoaded", async () => {
   const token = getToken();
   const user = getUser();
 
+  console.log("Dashboard loading...", { token, user });
+
+  // Redirect to login if no token on protected pages
   if (window.location.pathname.includes("dashboard.html")) {
-    if (!token) {
+    if (!token || !user) {
+      console.log("No token or user, redirecting to login");
       window.location.href = "login.html";
       return;
     }
 
-    // Fetch current user info to get the latest role from database
+    // Fetch fresh user data
     const userInfo = await fetchCurrentUser();
-    const userRole = userInfo?.role || user?.user_metadata?.role || "user";
+    console.log("Fetched user info:", userInfo);
+    
+    if (!userInfo) {
+      console.log("No user info, logging out");
+      logout();
+      return;
+    }
 
+    // Update welcome message
     const welcome = document.getElementById("welcome-text");
     if (welcome) {
-      const displayName =
-        userInfo?.name || user?.user_metadata?.full_name || user?.email || "";
-      welcome.innerText = `Welcome${displayName ? " " + displayName : ""}!`;
+      welcome.innerText = `Welcome, ${userInfo.name || userInfo.email}!`;
     }
 
-    if (userRole === "admin") {
+    // Show appropriate sections based on role
+    console.log("User role:", userInfo.role);
+    
+    // 🔥 THIS IS WHERE YOU PUT THE CODE 🔥
+    if (userInfo.role === "admin") {
+      console.log("Showing admin section");
       document.getElementById("admin-section").style.display = "block";
-      fetchUsers();
-      fetchBusinesses();
+      document.getElementById("user-section").style.display = "none";
+      await fetchUsers();
+      await fetchAllBusinesses(); // Admin sees all businesses
     } else {
+      console.log("Showing user section");
+      document.getElementById("admin-section").style.display = "none";
       document.getElementById("user-section").style.display = "block";
-      fetchBusinesses();
+      await fetchBusinesses(); // User sees their own businesses (ALL statuses)
     }
   }
+
+  // Check if already logged in on login/register pages
+  if ((window.location.pathname.includes("login.html") || 
+       window.location.pathname.includes("register.html")) && 
+      token) {
+    window.location.href = "dashboard.html";
+  }
 });
+
+// ========================
+// ADMIN BUSINESS MANAGEMENT
+// ========================
+async function fetchAllBusinesses() {
+  try {
+    const token = getToken();
+    if (!token) {
+      showError("Please login again");
+      return;
+    }
+
+    const response = await fetch(`${API_URL}/admin/businesses`, {
+      headers: { 
+        "Authorization": `Bearer ${token}` 
+      },
+    });
+
+    const result = await response.json();
+    
+    if (!result.success) {
+      throw new Error(result.message || "Failed to load businesses");
+    }
+
+    const businessList = document.getElementById("admin-business-list");
+    if (!businessList) return;
+
+    if (!result.data || result.data.length === 0) {
+      businessList.innerHTML = "<p>No businesses found.</p>";
+      return;
+    }
+
+    businessList.innerHTML = result.data
+      .map((business) => {
+        const status = business.status || "pending";
+        const statusClass = status.toLowerCase();
+        const ownerName = business.owner_name || business.users?.name || "Unknown";
+        
+        const approveButton = status !== "approved" 
+          ? `<button class="btn-approve" onclick="approveBusiness('${business.id}')">Approve</button>`
+          : `<span class="status-badge approved">Approved</span>`;
+        
+        const rejectButton = status !== "rejected" 
+          ? `<button class="btn-reject" onclick="rejectBusiness('${business.id}')">Reject</button>`
+          : `<span class="status-badge rejected">Rejected</span>`;
+
+        return `
+          <div class="business-card ${statusClass}">
+            <h3>${business.name}</h3>
+            <p>${business.description || "No description"}</p>
+            <div class="business-meta">
+              <span class="status ${statusClass}">Status: ${status}</span>
+              <span class="owner">Owner: ${ownerName}</span>
+              ${business.created_at ? `<span class="date">Created: ${new Date(business.created_at).toLocaleDateString()}</span>` : ""}
+            </div>
+            <div class="admin-actions">
+              ${approveButton}
+              ${rejectButton}
+              ${business.rejection_reason ? `<p class="rejection-reason">Reason: ${business.rejection_reason}</p>` : ""}
+            </div>
+          </div>`;
+      })
+      .join("");
+  } catch (err) {
+    console.error("Error fetching all businesses:", err);
+    showError(err.message || "Failed to load businesses");
+  }
+}
+
+// Update the existing fetchBusinesses for regular users
+async function fetchBusinesses() {
+  try {
+    const token = getToken();
+    if (!token) {
+      showError("Please login again");
+      return;
+    }
+
+    const response = await fetch(`${API_URL}/businesses`, {
+      headers: { 
+        "Authorization": `Bearer ${token}` 
+      },
+    });
+
+    const result = await response.json();
+    
+    if (!result.success) {
+      throw new Error(result.message || "Failed to load businesses");
+    }
+
+    const businessList = document.getElementById("business-list");
+    if (!businessList) return;
+
+    if (!result.data || result.data.length === 0) {
+      businessList.innerHTML = "<p>No businesses found. Create your first business!</p>";
+      return;
+    }
+
+    businessList.innerHTML = result.data
+      .map((business) => {
+        const status = business.status || "pending";
+        const statusClass = status.toLowerCase();
+
+        return `
+          <div class="business-card ${statusClass}">
+            <h3>${business.name}</h3>
+            <p>${business.description || "No description"}</p>
+            <div class="business-meta">
+              <span class="status ${statusClass}">Status: ${status}</span>
+              ${business.created_at ? `<span class="date">Created: ${new Date(business.created_at).toLocaleDateString()}</span>` : ""}
+              ${business.rejection_reason ? `<p class="rejection-reason">Reason: ${business.rejection_reason}</p>` : ""}
+            </div>
+          </div>`;
+      })
+      .join("");
+  } catch (err) {
+    console.error("Error fetching businesses:", err);
+    showError(err.message || "Failed to load businesses");
+  }
+}
+
+async function addBusiness(event) {
+  event.preventDefault();
+  console.log("Adding business...");
+  
+  const name = document.getElementById("business-name").value.trim();
+  const description = document.getElementById("business-description").value.trim();
+  const msg = document.getElementById("form-msg");
+
+  if (!name) {
+    msg.className = "message error";
+    msg.innerText = "Business name is required";
+    return;
+  }
+
+  try {
+    const response = await fetch(`${API_URL}/businesses`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${getToken()}`,
+      },
+      body: JSON.stringify({ name, description }),
+    });
+
+    const result = await response.json();
+    
+    if (!result.success) {
+      throw new Error(result.message || "Failed to add business");
+    }
+
+    hideAddBusinessForm();
+    await fetchUserBusinesses(); // Refresh the user's business list
+    showSuccessMessage("Business created successfully! Waiting for admin approval.");
+  } catch (err) {
+    console.error("Add business error:", err);
+    msg.className = "message error";
+    msg.innerText = err.message || "Failed to create business";
+  }
+}
